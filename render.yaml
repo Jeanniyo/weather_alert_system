@@ -1,0 +1,9 @@
+services:
+  - type: cron
+    name: weather-alert-system-cron
+    env: python
+    plan: free
+    region: oregon
+    schedule: "0 * * * *"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python weather_alert_runner.py"
