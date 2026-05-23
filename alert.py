@@ -20,6 +20,7 @@ from config import (
     EMERGENCY_STATE_FILE, EMERGENCY_COOLDOWN_HOURS,
 )
 from email_html import build_normal_html, build_emergency_html
+from history_logger import log_alert_event
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -261,8 +262,6 @@ class GmailMessenger:
         return True
 
 
-# ---------------- SEND TO ALL CONTACTS ----------------
-
 def send_forecast_to_all():
     forecast = fetch_weather_forecast()
     emails   = load_contacts()
@@ -295,14 +294,16 @@ def send_forecast_to_all():
             plain     = generate_normal_message(forecast)
             _, tips   = choose_tips(forecast) if "condition" in forecast else ("🌦", ("Monitor local conditions.", "Stay safe."))
             html      = build_normal_html(forecast, tips) if "condition" in forecast else None
-            _send_emails(messenger, emails, subject, plain, html)
+            success, fail, err = _send_emails(messenger, emails, subject, plain, html)
+            log_alert_event("NORMAL", subject, success, forecast, "SUCCESS" if not err else "FAILED", err)
             return
 
         # Send emergency
         subject = _subject_for_reason(decision["reason"], city)
         plain   = generate_emergency_message(forecast, decision["reason"], decision["metric"])
         html    = build_emergency_html(forecast, decision["reason"], decision["metric"])
-        _send_emails(messenger, emails, subject, plain, html)
+        success, fail, err = _send_emails(messenger, emails, subject, plain, html)
+        log_alert_event("EMERGENCY", subject, success, forecast, "SUCCESS" if not err else "FAILED", err)
 
         state[decision["reason"]] = now.isoformat()
         save_emergency_state(state)
@@ -312,20 +313,29 @@ def send_forecast_to_all():
         plain   = generate_normal_message(forecast)
         _, tips = choose_tips(forecast) if "condition" in forecast else ("🌦", ("Monitor local conditions.", "Stay safe."))
         html    = build_normal_html(forecast, tips) if "condition" in forecast else None
-        _send_emails(messenger, emails, subject, plain, html)
+        success, fail, err = _send_emails(messenger, emails, subject, plain, html)
+        log_alert_event("NORMAL", subject, success, forecast, "SUCCESS" if not err else "FAILED", err)
 
 
 def _send_emails(messenger: GmailMessenger, emails: list, subject: str,
-                 body: str, html_body: str | None = None):
+                 body: str, html_body: str | None = None) -> tuple[int, int, str | None]:
+    """Sends emails and returns (success_count, fail_count, last_error)."""
+    success_count = 0
+    fail_count = 0
+    last_error = None
     logging.info("Sending email to %d recipient(s)...", len(emails))
     for email in emails:
         try:
             messenger.send_email(email, subject, body, html_body)
             logging.info("Email sent to %s", email)
-        except smtplib.SMTPAuthenticationError:
-            logging.error(
-                "SMTP authentication failed. Check GMAIL_ADDRESS and GMAIL_APP_PASSWORD in .env"
-            )
+            success_count += 1
+        except smtplib.SMTPAuthenticationError as e:
+            last_error = "SMTP authentication failed"
+            logging.error(last_error)
+            fail_count += len(emails) - success_count
             break
         except Exception as e:
+            last_error = str(e)
             logging.error("Email failed for %s: %s", email, e)
+            fail_count += 1
+    return success_count, fail_count, last_error

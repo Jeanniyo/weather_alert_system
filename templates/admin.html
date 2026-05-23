@@ -1,0 +1,749 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard Console | CST METEO{% endblock %}
+
+{% block styles %}
+<style>
+  /* Admin layout grid */
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  .admin-title h1 {
+    font-size: 32px;
+    background: linear-gradient(135deg, #ffffff, #9ca3af);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .admin-title p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  
+  /* Quick Actions Board */
+  .quick-actions {
+    display: flex;
+    gap: 15px;
+  }
+  
+  .btn-action {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.25);
+  }
+  
+  .btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+  }
+  
+  .btn-action.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--panel-border);
+    box-shadow: none;
+  }
+  
+  .btn-action.secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  /* 4x Grid Metrics */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 35px;
+  }
+  
+  .metric-card {
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .metric-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  .metric-card.primary::after { background: var(--primary); }
+  .metric-card.success::after { background: var(--success); }
+  .metric-card.warning::after { background: var(--warning); }
+  .metric-card.danger::after { background: var(--danger); }
+  
+  .metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  
+  .metric-title {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+  }
+  
+  .metric-icon {
+    font-size: 18px;
+    color: var(--text-muted);
+  }
+  
+  .metric-card.primary .metric-icon { color: var(--primary); }
+  .metric-card.success .metric-icon { color: var(--success); }
+  .metric-card.warning .metric-icon { color: var(--warning); }
+  
+  .metric-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+  }
+  
+  .metric-sub {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  
+  /* Tab Section */
+  .dashboard-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--panel-border);
+    margin-bottom: 30px;
+    gap: 25px;
+  }
+  
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 5px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .tab-btn:hover {
+    color: #fff;
+  }
+  
+  .tab-btn.active {
+    color: var(--primary);
+  }
+  
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--primary);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+  }
+  
+  .tab-content {
+    display: none;
+  }
+  
+  .tab-content.active {
+    display: block;
+    animation: fadeIn 0.4s ease;
+  }
+  
+  /* Tables & Lists */
+  .table-card {
+    padding: 20px 0;
+    overflow: hidden;
+  }
+  
+  .table-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px 20px;
+    border-bottom: 1px solid var(--panel-border);
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  
+  .table-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+  
+  .table-search {
+    position: relative;
+  }
+  
+  .table-search i {
+    position: absolute;
+    left: 14px;
+    top: 11px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  
+  .search-input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 8px 12px 8px 36px;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+    width: 240px;
+    transition: all 0.3s ease;
+  }
+  
+  .search-input:focus {
+    width: 300px;
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  
+  .table-wrapper {
+    overflow-x: auto;
+    width: 100%;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13.5px;
+  }
+  
+  th {
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 16px 25px;
+    border-bottom: 1px solid var(--panel-border);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+  }
+  
+  td {
+    padding: 16px 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: #e5e7eb;
+    vertical-align: middle;
+  }
+  
+  tr:hover td {
+    background-color: var(--panel-hover);
+  }
+  
+  /* Status tags */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  
+  .badge.success {
+    background-color: rgba(16, 185, 129, 0.12);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+  }
+  
+  .badge.danger {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  
+  .badge.primary {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+  }
+  
+  .btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 15px;
+    transition: color 0.2s ease;
+    padding: 5px;
+  }
+  
+  .btn-delete:hover {
+    color: var(--danger);
+  }
+  
+  /* Add Manual form modal styling in panels */
+  .admin-grid-section {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+  }
+  
+  .form-card {
+    border-radius: 20px;
+  }
+  
+  .form-group-flex {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+  
+  /* Modal Overlay Notification */
+  #overlay-message {
+    display: none;
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    z-index: 9999;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    font-weight: 600;
+    font-size: 13.5px;
+    align-items: center;
+    gap: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  
+  #overlay-message.success {
+    background: rgba(16, 185, 129, 0.95);
+    color: #fff;
+  }
+  
+  #overlay-message.error {
+    background: rgba(239, 68, 68, 0.95);
+    color: #fff;
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @media (max-width: 1024px) {
+    .metrics-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .admin-grid-section {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .metrics-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Top Title / Action Header -->
+<div class="admin-header">
+  <div class="admin-title">
+    <h1>Dashboard Terminal</h1>
+    <p>Live Monitoring System Console for Kigali Station</p>
+  </div>
+  
+  <div class="quick-actions">
+    <button onclick="triggerAlertNow()" class="btn-action" id="trigger-btn">
+      <i class="fa-solid fa-paper-plane"></i> Run Dispatcher Now
+    </button>
+  </div>
+</div>
+
+<!-- 4 Metrics Overview grid -->
+<div class="metrics-grid">
+  <!-- Metric 1: Total -->
+  <div class="glass-card metric-card primary">
+    <div class="metric-header">
+      <span class="metric-title">Total Subscribers</span>
+      <i class="fa-solid fa-users metric-icon"></i>
+    </div>
+    <div class="metric-value">{{ total_subscribers }}</div>
+    <div class="metric-sub">Emails currently on weather dispatch list</div>
+  </div>
+  
+  <!-- Metric 2: Portal vs legacy -->
+  <div class="glass-card metric-card success">
+    <div class="metric-header">
+      <span class="metric-title">System Status</span>
+      <i class="fa-solid fa-circle-check metric-icon"></i>
+    </div>
+    <div class="metric-value" style="font-size: 26px; padding: 4px 0;">ACTIVE 🟢</div>
+    <div class="metric-sub">Server checks & Cron jobs online</div>
+  </div>
+  
+  <!-- Metric 3: Next check -->
+  <div class="glass-card metric-card warning">
+    <div class="metric-header">
+      <span class="metric-title">Next Scheduled Run</span>
+      <i class="fa-solid fa-clock metric-icon"></i>
+    </div>
+    <div class="metric-value" style="font-size: 22px; padding: 8px 0; font-weight: 700;">Hourly Cron</div>
+    <div class="metric-sub">Estimated at next hour (Minute: 00)</div>
+  </div>
+  
+  <!-- Metric 4: Alerts sent -->
+  <div class="glass-card metric-card danger">
+    <div class="metric-header">
+      <span class="metric-title">Weather Status</span>
+      <i class="fa-solid fa-cloud-sun-rain metric-icon"></i>
+    </div>
+    <div class="metric-value" style="font-size: 24px; padding: 6px 0;">
+      {% if forecast and 'error' not in forecast %}
+        {{ forecast['temp'] }}°C
+      {% else %}
+        API ERROR
+      {% endif %}
+    </div>
+    <div class="metric-sub">
+      {% if forecast and 'error' not in forecast %}
+        Condition: {{ forecast['condition'].capitalize() }}
+      {% else %}
+        Failed to fetch forecast details
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Main Section Area -->
+<div class="dashboard-tabs">
+  <button onclick="switchTab('subscribers')" class="tab-btn active" id="tab-btn-subscribers">
+    <i class="fa-solid fa-user-group"></i> Subscribers List
+  </button>
+  <button onclick="switchTab('history')" class="tab-btn" id="tab-btn-history">
+    <i class="fa-solid fa-history"></i> Activity Logs
+  </button>
+  <button onclick="switchTab('config')" class="tab-btn" id="tab-btn-config">
+    <i class="fa-solid fa-sliders"></i> Station Limits
+  </button>
+</div>
+
+<!-- TAB 1: Subscribers list -->
+<div id="tab-subscribers" class="tab-content active">
+  <div class="admin-grid-section">
+    <!-- Left: Table of subscribers -->
+    <div class="glass-card table-card">
+      <div class="table-header-row">
+        <div class="table-title">Subscribed Contacts</div>
+        <div class="table-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="search-box" onkeyup="filterSubscribers()" class="search-input" placeholder="Search by name, email or location...">
+        </div>
+      </div>
+      
+      <div class="table-wrapper">
+        <table id="subscribers-table">
+          <thead>
+            <tr>
+              <th>Subscriber Name</th>
+              <th>Email Address</th>
+              <th>Location</th>
+              <th>Added Date</th>
+              <th style="text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for contact in contacts %}
+              <tr id="row-{{ loop.index }}">
+                <td style="font-weight: 600; color: #fff;">{{ contact['name'] }}</td>
+                <td style="font-family: monospace;">{{ contact['email'] }}</td>
+                <td><i class="fa-solid fa-location-dot" style="color: var(--text-muted); font-size: 11px; margin-right: 4px;"></i> {{ contact['location'] }}</td>
+                <td>{{ contact['subscribed_at'] }}</td>
+                <td style="text-align: right;">
+                  <button onclick="deleteContact('{{ contact['email'] }}', 'row-{{ loop.index }}')" class="btn-delete" title="Delete subscriber">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+            {% if not contacts %}
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px 0;">No contacts found in contacts.csv database.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Right: Add Subscriber Manually -->
+    <div class="glass-card form-card" style="height: fit-content;">
+      <h3 style="font-size: 18px; margin-bottom: 20px; color: #fff;"><i class="fa-solid fa-user-plus" style="color: var(--primary); margin-right: 8px;"></i> Add Subscriber</h3>
+      
+      <form action="{{ url_for('admin_add_contact') }}" method="POST">
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">Subscriber Name</label>
+          <input type="text" name="name" class="search-input" placeholder="E.g., John Doe" style="width: 100%; padding: 12px 14px;" required>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">Email Address</label>
+          <input type="email" name="email" class="search-input" placeholder="E.g., john@domain.com" style="width: 100%; padding: 12px 14px;" required>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">Location</label>
+          <input type="text" name="location" class="search-input" placeholder="E.g., Kigali, RW" style="width: 100%; padding: 12px 14px;">
+        </div>
+        
+        <button type="submit" class="btn-action" style="width: 100%; justify-content: center; padding: 14px;">
+          <i class="fa-solid fa-plus"></i> Save Subscriber
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: History logs -->
+<div id="tab-history" class="tab-content">
+  <div class="glass-card table-card">
+    <div class="table-header-row">
+      <div class="table-title">Weather Alert Dispatch Logs</div>
+    </div>
+    
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Alert Type</th>
+            <th>Email Subject</th>
+            <th>City</th>
+            <th>Reached Count</th>
+            <th>Temp / Rain / Wind</th>
+            <th>Delivery</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in history %}
+            <tr>
+              <td style="font-weight: 500; font-family: monospace;">{{ log['timestamp'] }}</td>
+              <td>
+                {% if log['alert_type'] == 'EMERGENCY' %}
+                  <span class="badge danger"><i class="fa-solid fa-circle-exclamation"></i> EMERGENCY</span>
+                {% else %}
+                  <span class="badge success"><i class="fa-solid fa-circle-info"></i> NORMAL</span>
+                {% endif %}
+              </td>
+              <td style="font-weight: 600;">{{ log['subject'] }}</td>
+              <td>{{ log['city'] }}</td>
+              <td style="font-weight: 700; text-align: center;">{{ log['recipients_count'] }}</td>
+              <td style="font-size: 12px; color: var(--text-muted);">
+                🌡️ {{ log['temp'] }}°C · 🌧️ {{ log['rain_1h'] }}/{{ log['rain_3h'] }} mm · 🌬️ {{ log['wind'] }} m/s
+              </td>
+              <td>
+                {% if log['status'] == 'SUCCESS' %}
+                  <span class="badge success"><i class="fa-solid fa-check"></i> SENT</span>
+                {% else %}
+                  <span class="badge danger" title="{{ log['error'] }}"><i class="fa-solid fa-xmark"></i> ERROR</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          {% if not history %}
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 40px 0;">No dispatch runs recorded yet. (Run dispatcher once to initialize logs).</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Limits config -->
+<div id="tab-config" class="tab-content">
+  <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
+    <h3 style="font-size: 20px; margin-bottom: 25px; border-bottom: 1px solid var(--panel-border); padding-bottom: 15px;"><i class="fa-solid fa-sliders" style="color: var(--primary); margin-right: 8px;"></i> Dynamic Station Limits</h3>
+    
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 12px;">
+        <span style="font-weight: 500;">Monitoring City Station</span>
+        <span style="font-family: monospace; color: #fff; font-weight: 600;">{{ city }}</span>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 12px;">
+        <span style="font-weight: 500;">Rainfall Emergency Threshold (1h/3h)</span>
+        <span style="font-family: monospace; color: var(--danger); font-weight: 600;">{{ rainfall_threshold }} mm</span>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 12px;">
+        <span style="font-weight: 500;">Wind Speed Emergency Limit</span>
+        <span style="font-family: monospace; color: var(--danger); font-weight: 600;">{{ wind_threshold }} m/s</span>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 12px;">
+        <span style="font-weight: 500;">Extreme High Temperature Limit</span>
+        <span style="font-family: monospace; color: var(--danger); font-weight: 600;">{{ temp_threshold }} °C</span>
+      </div>
+    </div>
+    
+    <div style="margin-top: 30px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15); padding: 18px; border-radius: 12px; font-size: 13px; line-height: 1.5; color: var(--text-muted);">
+      <i class="fa-solid fa-circle-info" style="color: var(--primary); margin-right: 6px;"></i> <b>Note on Configs:</b> These thresholds are configured via the system environment variables (`.env`). Change them on Railway dashboard variables directly to live updates.
+    </div>
+  </div>
+</div>
+
+<!-- AJAX Notification overlay box -->
+<div id="overlay-message"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Dynamic Tab Switching
+  function switchTab(tabId) {
+    // Hide all contents
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    
+    // Show chosen tab
+    document.getElementById('tab-' + tabId).classList.add('active');
+    document.getElementById('tab-btn-' + tabId).classList.add('active');
+  }
+
+  // Live Filter/Search Subscribers list
+  function filterSubscribers() {
+    let input = document.getElementById("search-box").value.toLowerCase();
+    let rows = document.querySelectorAll("#subscribers-table tbody tr");
+    
+    rows.forEach(row => {
+      let cells = row.getElementsByTagName("td");
+      if (cells.length < 3) return;
+      
+      let name = cells[0].textContent.toLowerCase();
+      let email = cells[1].textContent.toLowerCase();
+      let location = cells[2].textContent.toLowerCase();
+      
+      if (name.includes(input) || email.includes(input) || location.includes(input)) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+  }
+
+  // AJAX call to delete subscriber
+  function deleteContact(email, rowId) {
+    if (!confirm('Are you sure you want to delete subscriber: ' + email + '?')) {
+      return;
+    }
+    
+    fetch('/admin/contacts/delete/' + encodeURIComponent(email), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Remove row visual element
+        document.getElementById(rowId).remove();
+        showNotification('Successfully removed ' + email, 'success');
+      } else {
+        showNotification('Failed to remove subscriber: ' + data.message, 'error');
+      }
+    })
+    .catch(error => {
+      showNotification('Error connecting to server.', 'error');
+      console.error('Error:', error);
+    });
+  }
+
+  // AJAX call to trigger weather check manually
+  function triggerAlertNow() {
+    let btn = document.getElementById('trigger-btn');
+    let originalText = btn.innerHTML;
+    
+    // Disable button & animate loading spinner
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...';
+    btn.style.opacity = '0.7';
+    
+    fetch('/admin/trigger-now', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      btn.style.opacity = '1';
+      
+      if (data.success) {
+        showNotification(data.message, 'success');
+        // Reload page to show fresh activity log in 3s
+        setTimeout(() => { location.reload(); }, 3000);
+      } else {
+        showNotification('Trigger failed: ' + data.message, 'error');
+      }
+    })
+    .catch(error => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+      btn.style.opacity = '1';
+      showNotification('Connection error while triggering alert.', 'error');
+      console.error('Error:', error);
+    });
+  }
+
+  // Helper notification toast
+  function showNotification(message, type) {
+    let container = document.getElementById('overlay-message');
+    container.className = type;
+    container.innerHTML = (type === 'success' ? '<i class="fa-solid fa-circle-check"></i> ' : '<i class="fa-solid fa-circle-exclamation"></i> ') + message;
+    container.style.display = 'flex';
+    
+    setTimeout(() => {
+      container.style.display = 'none';
+    }, 4500);
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block title %}Subscribe to Free Smart Weather Alerts | CST METEO{% endblock %}
+
+{% block styles %}
+<style>
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 40px;
+    align-items: center;
+    margin-top: 20px;
+  }
+  
+  .hero-text h1 {
+    font-size: 54px;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ffffff 30%, #a5f3fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .hero-text p {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+  }
+  
+  .station-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    color: #34d399;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+  
+  .station-badge .pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--success);
+    border-radius: 50%;
+    animation: livePulse 1.8s infinite;
+  }
+  
+  /* Premium glass subscription card */
+  .subscribe-card {
+    background: linear-gradient(145deg, rgba(20, 30, 50, 0.75), rgba(10, 15, 28, 0.9));
+    border: 1px solid var(--panel-border);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .subscribe-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--primary), var(--success));
+  }
+  
+  .card-title {
+    font-size: 26px;
+    margin-bottom: 10px;
+    font-weight: 800;
+    text-align: center;
+    color: #fff;
+  }
+  
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 25px;
+  }
+  
+  /* Input Form Fields */
+  .form-group {
+    margin-bottom: 20px;
+    position: relative;
+  }
+  
+  .form-group i {
+    position: absolute;
+    left: 18px;
+    top: 17px;
+    color: var(--text-muted);
+    font-size: 15px;
+    transition: color 0.3s ease;
+  }
+  
+  .form-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 15px 18px 15px 48px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .form-input:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+  }
+  
+  .form-input:focus + i {
+    color: var(--primary);
+  }
+  
+  .btn-submit {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #fff;
+    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  }
+  
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, var(--primary-hover), #1d4ed8);
+  }
+  
+  .btn-submit:active {
+    transform: translateY(0);
+  }
+  
+  /* Features grid */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 25px;
+    margin-top: 60px;
+  }
+  
+  .feature-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 25px;
+    text-align: left;
+    transition: all 0.3s ease;
+  }
+  
+  .feature-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .feature-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .feature-card:nth-child(2) .feature-icon {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+  }
+  
+  .feature-card:nth-child(3) .feature-icon {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+  }
+  
+  .feature-card h3 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #fff;
+  }
+  
+  .feature-card p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  
+  @keyframes livePulse {
+    0% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+    70% { transform: scale(1.1); opacity: 0.8; box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+    100% { transform: scale(0.9); opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  }
+  
+  @media (max-width: 992px) {
+    .hero-grid {
+      grid-template-columns: 1fr;
+      gap: 30px;
+    }
+    .hero-text h1 {
+      font-size: 40px;
+    }
+    .features-grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero-grid">
+  <!-- Left Column: Marketing & Welcome text -->
+  <div class="hero-text">
+    <div class="station-badge">
+      <div class="pulse-dot"></div>
+      <span>Active Monitoring Station: {{ city }}</span>
+    </div>
+    <h1>Emergency Weather Warnings, Straight to Your Inbox.</h1>
+    <p>Protect your family, plan your farming, and secure your travels with our state-of-the-art meteorological notification system. Receive visually rich, animated HTML alerts during extreme weather thresholds—completely free of charge.</p>
+    
+    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-check" style="color: var(--success)"></i>
+        <span style="font-size: 13.5px; font-weight: 500;">Zero Cost Forever</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-check" style="color: var(--success)"></i>
+        <span style="font-size: 13.5px; font-weight: 500;">Instant Spam-Free Alerts</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fa-solid fa-check" style="color: var(--success)"></i>
+        <span style="font-size: 13.5px; font-weight: 500;">Unsubscribe in 1-Click</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Premium Subscription Box -->
+  <div class="glass-card subscribe-card">
+    <div class="card-title">Join System</div>
+    <div class="card-subtitle">Complete details below for automated reports.</div>
+    
+    <form action="{{ url_for('index') }}" method="POST">
+      <div class="form-group">
+        <input type="text" name="name" class="form-input" placeholder="Full Name" required autocomplete="name">
+        <i class="fa-solid fa-user"></i>
+      </div>
+      
+      <div class="form-group">
+        <input type="email" name="email" class="form-input" placeholder="Email Address" required autocomplete="email">
+        <i class="fa-solid fa-envelope"></i>
+      </div>
+      
+      <div class="form-group">
+        <input type="text" name="location" class="form-input" placeholder="Location (e.g. Kigali, RW)" autocomplete="address-level2">
+        <i class="fa-solid fa-location-dot"></i>
+      </div>
+      
+      <button type="submit" class="btn-submit">
+        <i class="fa-solid fa-bell"></i> Get Weather Alerts
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Features Showcase Grid -->
+<div class="features-grid">
+  <div class="feature-card">
+    <div class="feature-icon">
+      <i class="fa-solid fa-cloud-showers-heavy"></i>
+    </div>
+    <h3>Emergency Alerts</h3>
+    <p>Instantly alerts you in real-time when dangerous metrics are hit (heavy downpours $\ge$ 10mm, severe storms, high wind speeds, and temperature spikes).</p>
+  </div>
+  
+  <div class="feature-card">
+    <div class="feature-icon">
+      <i class="fa-solid fa-compass"></i>
+    </div>
+    <h3>Environmental Advice</h3>
+    <p>Includes high-utility local actionable tips from environmental planning specialists (e.g., routing safety, crop shielding, and emergency contacts).</p>
+  </div>
+  
+  <div class="feature-card">
+    <div class="feature-icon">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+    </div>
+    <h3>Rich Animations</h3>
+    <p>Delivers structured table-based, fully animated custom HSL emails (sun spin, cloud drifts, rain sway) designed to render perfectly on all devices.</p>
+  </div>
+</div>
+{% endblock %}

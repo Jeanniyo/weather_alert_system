@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Weather Alert System{% endblock %}</title>
+  <!-- Google Fonts: Inter & Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Global Premium Stylesheet -->
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --primary-rgb: 59, 130, 246;
+      --success: #10b981;
+      --success-rgb: 16, 185, 129;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --danger-rgb: 239, 68, 68;
+      
+      /* Sleek Dark/Light HSL Balance */
+      --bg: #0b111e;
+      --panel: rgba(17, 24, 39, 0.7);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --panel-hover: rgba(255, 255, 255, 0.03);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --glass-glow: rgba(59, 130, 246, 0.15);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    
+    /* Elegant animated gradient background glow */
+    body::before {
+      content: '';
+      position: absolute;
+      width: 40vw;
+      height: 40vw;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(13, 148, 136, 0.05) 50%, rgba(0, 0, 0, 0) 100%);
+      top: -10vw;
+      left: -10vw;
+      z-index: -1;
+      filter: blur(80px);
+    }
+    
+    body::after {
+      content: '';
+      position: absolute;
+      width: 50vw;
+      height: 50vw;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(99, 102, 241, 0.05) 60%, rgba(0, 0, 0, 0) 100%);
+      bottom: -15vw;
+      right: -15vw;
+      z-index: -1;
+      filter: blur(100px);
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    
+    /* Navigation Bar */
+    .navbar {
+      background: rgba(11, 17, 30, 0.8);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 18px 5%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #fff;
+    }
+    
+    .logo i {
+      font-size: 26px;
+      background: linear-gradient(135deg, var(--primary), var(--success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 2px 8px rgba(59, 130, 246, 0.3));
+    }
+    
+    .logo span {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #d1d5db);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+    
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .nav-link:hover, .nav-link.active {
+      color: #fff;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-admin {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--panel-border);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .btn-admin:hover {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    /* Main Layout container */
+    .main-container {
+      flex: 1;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    
+    /* Flash Messages */
+    .flash-container {
+      margin-bottom: 25px;
+      animation: fadeIn 0.4s ease;
+    }
+    
+    .flash-msg {
+      padding: 16px 20px;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    }
+    
+    .flash-msg.success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    
+    .flash-msg.error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    
+    .flash-msg.info {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+    }
+    
+    /* Glassmorphic Panel Cards */
+    .glass-card {
+      background: var(--panel);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      padding: 35px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+      transition: all 0.3s ease;
+    }
+    
+    /* Footer */
+    footer {
+      background: rgba(7, 10, 18, 0.9);
+      border-top: 1px solid var(--panel-border);
+      padding: 25px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+    
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    
+    footer a:hover {
+      color: #60a5fa;
+      text-decoration: underline;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 15px 20px;
+      }
+      .nav-links {
+        gap: 15px;
+      }
+      .nav-link span {
+        display: none;
+      }
+    }
+  </style>
+  {% block styles %}{% endblock %}
+</head>
+<body>
+
+  <!-- Premium Navbar -->
+  <nav class="navbar">
+    <a href="{{ url_for('index') }}" class="logo">
+      <i class="fa-solid fa-cloud-sun-rain"></i>
+      <span>CST METEO</span>
+    </a>
+    
+    <div class="nav-links">
+      <a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}">
+        <i class="fa-solid fa-signature"></i>
+        <span>Subscribe</span>
+      </a>
+      <a href="{{ url_for('unsubscribe') }}" class="nav-link {% if request.path == '/unsubscribe' %}active{% endif %}">
+        <i class="fa-solid fa-user-minus"></i>
+        <span>Unsubscribe</span>
+      </a>
+      {% if session.get('admin_logged_in') %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">
+          <i class="fa-solid fa-chart-line"></i> Dashboard
+        </a>
+        <a href="{{ url_for('admin_logout') }}" class="nav-link" style="color: var(--danger)">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      {% else %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-admin">
+          <i class="fa-solid fa-lock"></i> Admin Portal
+        </a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Flash Messages & Layout Content -->
+  <div class="main-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash-msg {{ category }}">
+              {% if category == 'success' %}
+                <i class="fa-solid fa-circle-check"></i>
+              {% elif category == 'error' %}
+                <i class="fa-solid fa-circle-exclamation"></i>
+              {% else %}
+                <i class="fa-solid fa-circle-info"></i>
+              {% endif %}
+              <span>{{ message }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  <!-- Premium Footer -->
+  <footer>
+    <p>© {{ datetime.datetime.now().strftime("%Y") if datetime else "2026" }} CST METEO · Kigali Environment Protection Alert. Developed by <a href="https://www.linkedin.com/in/jean-de-dieu-niyogisubizo/" target="_blank">Jean De Dieu Niyogisubizo</a></p>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Unsubscribe from Alerts | CST METEO{% endblock %}
+
+{% block styles %}
+<style>
+  .unsubscribe-wrapper {
+    max-width: 500px;
+    margin: 40px auto;
+  }
+  
+  .unsub-card {
+    border-radius: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .unsub-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--danger), #f87171);
+  }
+  
+  .card-header-icon {
+    font-size: 50px;
+    color: var(--danger);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .card-title {
+    font-size: 26px;
+    margin-bottom: 10px;
+    font-weight: 800;
+    text-align: center;
+    color: #fff;
+  }
+  
+  .card-subtitle {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 30px;
+    line-height: 1.5;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+    position: relative;
+  }
+  
+  .form-group i {
+    position: absolute;
+    left: 18px;
+    top: 17px;
+    color: var(--text-muted);
+    font-size: 15px;
+  }
+  
+  .form-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 15px 18px 15px 48px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .form-input:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+  }
+  
+  .form-input:focus + i {
+    color: var(--danger);
+  }
+  
+  .btn-submit {
+    width: 100%;
+    background: linear-gradient(135deg, var(--danger), #b91c1c);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
+  }
+  
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+  }
+  
+  .btn-submit:active {
+    transform: translateY(0);
+  }
+  
+  .back-link {
+    display: block;
+    text-align: center;
+    margin-top: 25px;
+    color: var(--text-muted);
+    font-size: 13.5px;
+    text-decoration: none;
+    transition: color 0.3s ease;
+  }
+  
+  .back-link:hover {
+    color: #fff;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="unsubscribe-wrapper">
+  <div class="glass-card unsub-card">
+    <div class="card-header-icon">
+      <i class="fa-solid fa-heart-broken"></i>
+    </div>
+    <div class="card-title">Unsubscribe</div>
+    <div class="card-subtitle">We are sorry to see you go. Enter your email below to instantly delete your record from the CST Weather alert list.</div>
+    
+    <form action="{{ url_for('unsubscribe') }}" method="POST">
+      <div class="form-group">
+        <input type="email" name="email" class="form-input" placeholder="Your Registered Email" required autocomplete="email">
+        <i class="fa-solid fa-envelope"></i>
+      </div>
+      
+      <button type="submit" class="btn-submit">
+        <i class="fa-solid fa-user-minus"></i> Confirm Unsubscribe
+      </button>
+    </form>
+  </div>
+  
+  <a href="{{ url_for('index') }}" class="back-link">
+    <i class="fa-solid fa-arrow-left"></i> Back to Subscription Portal
+  </a>
+</div>
+{% endblock %}
