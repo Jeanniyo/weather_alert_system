@@ -1,55 +1,60 @@
+# FILE: forecast.py
+# PURPOSE: Legacy standalone forecast module (predecessor of alert.py).
+#          Retained for reference; primary dispatch logic is in alert.py.
+#          Twilio has been fully replaced with GmailMessenger (smtplib / email.mime).
+
+import csv
 import datetime
 import logging
+
 import requests
-from twilio.rest import Client
+
+from alert import GmailMessenger
 from config import (
-    TWILIO_SID, TWILIO_TOKEN, TWILIO_WHATSAPP_NUMBER, TWILIO_NUMBER,
-    CITY, OPENWEATHER_API_KEY, CONTACTS_CSV
+    GMAIL_ADDRESS, GMAIL_APP_PASSWORD,
+    CITY, OPENWEATHER_API_KEY, CONTACTS_CSV,
 )
-import csv
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-def load_contacts(csv_file=CONTACTS_CSV):
-    numbers = []
+
+def load_contacts(csv_file: str = CONTACTS_CSV) -> list[str]:
+    """Read recipient email addresses from the contacts CSV file."""
+    emails = []
     try:
         with open(csv_file, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                raw = row.get("phone_number", "").strip()
+                raw = row.get("email", "").strip()
                 if raw:
-                    numbers.append(normalize_number(raw))
+                    emails.append(raw)
     except FileNotFoundError:
-        logging.warning(f"{csv_file} not found. No numbers loaded.")
-    return numbers
+        logging.warning(f"{csv_file} not found. No contacts loaded.")
+    return emails
 
-def normalize_number(number):
-    n = number.strip().replace(" ", "")
-    if not n.startswith("+"):
-        if n.startswith("0"):
-            n = "+250" + n[1:]  # adapt per your contact format
-        else:
-            n = "+" + n
-    return n
 
-def fetch_weather_forecast():
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={OPENWEATHER_API_KEY}&units=metric"
+def fetch_weather_forecast() -> dict:
+    url = (
+        f"http://api.openweathermap.org/data/2.5/weather"
+        f"?q={CITY}&appid={OPENWEATHER_API_KEY}&units=metric"
+    )
     try:
         resp = requests.get(url, timeout=10)
         if resp.status_code != 200:
             return {"error": f"API {resp.status_code}: {resp.json().get('message', 'Unknown')}"}
         data = resp.json()
         return {
-            "city": CITY.split(",")[0].title(),
-            "condition": data["weather"][0]["description"],  # e.g. "light rain"
-            "temp": float(data["main"]["temp"]),
-            "humidity": int(data["main"]["humidity"]),
-            "wind": float(data["wind"].get("speed", 0.0)),   # m/s
+            "city":      CITY.split(",")[0].title(),
+            "condition": data["weather"][0]["description"],
+            "temp":      float(data["main"]["temp"]),
+            "humidity":  int(data["main"]["humidity"]),
+            "wind":      float(data["wind"].get("speed", 0.0)),
         }
     except requests.RequestException as e:
         return {"error": f"Network error: {e}"}
 
-def choose_tips(forecast):
+
+def choose_tips(forecast: dict):
     cond = forecast["condition"].lower()
     temp = forecast["temp"]
     wind = forecast["wind"]
@@ -69,12 +74,12 @@ def choose_tips(forecast):
         return "☀️", tuple(tips)
     if "cloud" in cond or "overcast" in cond:
         return "☁️", ("Carry an umbrella just in case.", "Weather may change suddenly.")
-    # Wind-specific tip
-    if wind >= 10:  # ~36 km/h
+    if wind >= 10:
         return "🌬️", ("Gusty winds — secure loose items.", "Be cautious on motorcycles.")
     return "🌈", ("Monitor conditions closely.", "Be prepared for sudden changes.")
 
-def generate_forecast_message():
+
+def generate_forecast_message() -> str:
     forecast = fetch_weather_forecast()
     if "error" in forecast:
         return f"⚠️ WEATHER ALERT ERROR: {forecast['error']}"
@@ -93,38 +98,25 @@ def generate_forecast_message():
         f"— jean de dieu CST"
     )
 
-class TwilioMessenger:
-    def __init__(self, sid, token, whatsapp_from, sms_from):
-        self.client = Client(sid, token)
-        self.whatsapp_from = f"whatsapp:{whatsapp_from}" if not str(whatsapp_from).startswith("whatsapp:") else whatsapp_from
-        self.sms_from = sms_from
-
-    def send_whatsapp(self, number, body):
-        return self.client.messages.create(body=body, from_=self.whatsapp_from, to=f"whatsapp:{number}")
-
-    def send_sms(self, number, body):
-        return self.client.messages.create(body=body, from_=self.sms_from, to=number)
 
 def send_forecast_to_all():
-    body = generate_forecast_message()
-    numbers = load_contacts()
-    if not numbers:
+    body    = generate_forecast_message()
+    emails  = load_contacts()
+    city    = CITY.split(",")[0].title()
+    subject = f"🌦 Weather Update — {city}"
+
+    if not emails:
         logging.warning("No contacts found.")
         return
 
-    messenger = TwilioMessenger(TWILIO_SID, TWILIO_TOKEN, TWILIO_WHATSAPP_NUMBER, TWILIO_NUMBER)
-    logging.info(f"Sending alert to {len(numbers)} recipients...")
+    messenger = GmailMessenger(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+    logging.info("Sending alert to %d recipient(s)...", len(emails))
 
-    for number in numbers:
+    for email in emails:
         try:
-            msg = messenger.send_whatsapp(number, body)
-            logging.info(f"WhatsApp sent to {number}, SID: {msg.sid}")
+            messenger.send_email(email, subject, body)
+            logging.info("Email sent to %s", email)
         except Exception as e:
-            logging.warning(f"WhatsApp failed for {number}: {e}. Trying SMS...")
-            try:
-                msg = messenger.send_sms(number, body)
-                logging.info(f"SMS sent to {number}, SID: {msg.sid}")
-            except Exception as e2:
-                logging.error(f"SMS failed for {number}: {e2}")
+            logging.error("Email failed for %s: %s", email, e)
 
     logging.info("All alerts processed.")

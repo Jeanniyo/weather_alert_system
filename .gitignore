@@ -1,0 +1,37 @@
+# ============================================================
+# .gitignore — Weather Alert System
+# ============================================================
+
+# ── Credentials / Secrets — NEVER commit these ────────────
+.env
+file.env
+*.env
+
+# ── Python cache ──────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pycache
+
+# ── Runtime state files ───────────────────────────────────
+emergency_state.json
+
+# ── Test / Debug / Preview scripts (local use only) ───────
+test_*.py
+z*.py
+send_preview_email.py
+send_test_email.py
+*_test.py
+*_debug.py
+
+# ── Editor / IDE artefacts ────────────────────────────────
+.vscode/
+.idea/
+pyrightconfig.json
+*.swp
+*.swo
+
+# ── OS artefacts ──────────────────────────────────────────
+.DS_Store
+Thumbs.db

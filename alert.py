@@ -1,49 +1,44 @@
 # FILE: alert.py
-# PURPOSE: Weather forecast → emergency logic → Twilio send (WhatsApp → SMS fallback)
+# PURPOSE: Weather forecast → emergency logic → Gmail SMTP delivery (HTML)
 
 import csv
 import datetime
 import json
 import logging
 import os
-import requests
-from twilio.rest import Client
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Dict
 
+import requests
+
 from config import (
-    TWILIO_SID, TWILIO_TOKEN, TWILIO_WHATSAPP_NUMBER, TWILIO_NUMBER,
+    GMAIL_ADDRESS, GMAIL_APP_PASSWORD,
     CITY, OPENWEATHER_API_KEY, CONTACTS_CSV,
     RAINFALL_MM_THRESHOLD, EMERGENCY_WIND_MS, EMERGENCY_TEMP_C,
-    EMERGENCY_STATE_FILE, EMERGENCY_COOLDOWN_HOURS
+    EMERGENCY_STATE_FILE, EMERGENCY_COOLDOWN_HOURS,
 )
+from email_html import build_normal_html, build_emergency_html
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
 # ---------------- CONTACT HELPERS ----------------
 
-def normalize_number(number: str) -> str:
-    n = number.strip().replace(" ", "")
-    if not n.startswith("+"):
-        if n.startswith("0"):
-            n = "+250" + n[1:]
-        else:
-            n = "+" + n
-    return n
-
-
 def load_contacts(csv_file: str = CONTACTS_CSV) -> list[str]:
-    numbers = []
+    """Read recipient email addresses from the contacts CSV file."""
+    emails = []
     try:
         with open(csv_file, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                raw = row.get("phone_number", "").strip()
+                raw = row.get("email", "").strip()
                 if raw:
-                    numbers.append(normalize_number(raw))
+                    emails.append(raw)
     except FileNotFoundError:
         logging.warning(f"{csv_file} not found.")
-    return numbers
+    return emails
 
 
 # ---------------- EMERGENCY STATE ----------------
@@ -70,7 +65,10 @@ def save_emergency_state(state: Dict):
 # ---------------- WEATHER FETCH ----------------
 
 def fetch_weather_forecast() -> dict:
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={OPENWEATHER_API_KEY}&units=metric"
+    url = (
+        f"http://api.openweathermap.org/data/2.5/weather"
+        f"?q={CITY}&appid={OPENWEATHER_API_KEY}&units=metric"
+    )
     try:
         resp = requests.get(url, timeout=10)
         if resp.status_code != 200:
@@ -86,13 +84,15 @@ def fetch_weather_forecast() -> dict:
         rain_3h = float(rain.get("3h", 0.0))
 
         return {
-            "city": CITY.split(",")[0].title(),
-            "condition": str(data["weather"][0]["description"]),
-            "temp": float(data["main"]["temp"]),
-            "humidity": int(data["main"]["humidity"]),
-            "wind": float(data.get("wind", {}).get("speed", 0.0)),
-            "rain_1h": rain_1h,
-            "rain_3h": rain_3h,
+            "city":       CITY.split(",")[0].title(),
+            "condition":  str(data["weather"][0]["description"]),
+            "temp":       float(data["main"]["temp"]),
+            "humidity":   int(data["main"]["humidity"]),
+            "wind":       float(data.get("wind", {}).get("speed", 0.0)),
+            "rain_1h":    rain_1h,
+            "rain_3h":    rain_3h,
+            "clouds":     int(data.get("clouds", {}).get("all", 0)),
+            "visibility": int(data.get("visibility", 10000)) // 1000,
         }
     except requests.RequestException as e:
         return {"error": f"Network error: {e}"}
@@ -193,120 +193,139 @@ def generate_emergency_message(forecast: dict, reason: str, metric: float) -> st
     return f"‼️ EMERGENCY ({reason}) — Check local guidance. {now}"
 
 
-# ---------------- TWILIO MESSENGER ----------------
+def _subject_for_reason(reason: str, city: str) -> str:
+    """Build an appropriate email subject line for emergency or normal alerts."""
+    labels = {
+        "heavy_rain_3h":  f"‼️ FLOOD ALERT — Heavy Rain in {city}",
+        "heavy_rain_1h":  f"‼️ FLOOD ALERT — Heavy Rain in {city}",
+        "storm_with_wind": f"‼️ STORM ALERT — {city}",
+        "extreme_heat":   f"‼️ HEAT EMERGENCY — {city}",
+    }
+    return labels.get(reason, f"🌦 Weather Update — {city}")
 
-class TwilioMessenger:
-    def __init__(self, sid, token, whatsapp_from, sms_from):
-        self.client = Client(sid, token)
-        self.whatsapp_from = (
-            f"whatsapp:{whatsapp_from}"
-            if whatsapp_from and not str(whatsapp_from).startswith("whatsapp:")
-            else whatsapp_from
-        )
-        self.sms_from = sms_from
 
-    def send_whatsapp(self, number, body):
-        if not self.whatsapp_from:
-            raise ValueError("WhatsApp sender not configured.")
+# ---------------- GMAIL MESSENGER ----------------
 
-        # Accept LIST or single number
-        if isinstance(number, list):
-            last_msg = None
-            for num in number:
-                last_msg = self.client.messages.create(
-                    body=body,
-                    from_=self.whatsapp_from,
-                    to=f"whatsapp:{num}"
-                )
-            return last_msg
+class GmailMessenger:
+    """
+    Zero-cost, zero-dependency email dispatcher using smtplib + email.mime.
+    Connects to smtp.gmail.com:587 with STARTTLS.
 
-        # Single number case
-        return self.client.messages.create(
-            body=body,
-            from_=self.whatsapp_from,
-            to=f"whatsapp:{number}"
-        )
+    Prerequisites:
+        • GMAIL_ADDRESS    — your Gmail address
+        • GMAIL_APP_PASSWORD — 16-char App Password from Google Account > Security
+          (NOT your regular password; requires 2-Step Verification enabled)
+    """
 
-    def send_sms(self, number, body):
-        if not self.sms_from:
-            raise ValueError("SMS sender not configured.")
+    def __init__(self, address: str, app_password: str):
+        self.address = address
+        self.app_password = app_password
 
-        # Accept LIST or single number
-        if isinstance(number, list):
-            last_msg = None
-            for num in number:
-                last_msg = self.client.messages.create(
-                    body=body,
-                    from_=self.sms_from,
-                    to=num
-                )
-            return last_msg
+    def _validate(self):
+        if not self.address or not self.app_password:
+            raise ValueError(
+                "GMAIL_ADDRESS and GMAIL_APP_PASSWORD must be set in your .env file."
+            )
 
-        return self.client.messages.create(
-            body=body,
-            from_=self.sms_from,
-            to=number
-        )
+    def send_email(self, to: str, subject: str, body: str,
+                   html_body: str | None = None) -> bool:
+        """
+        Send an email.
+        - If html_body is provided → send HTML-only (no plain-text alternative).
+          This prevents Gmail from showing a second ugly plain-text version.
+        - If no html_body → fall back to plain-text only.
+        """
+        self._validate()
+
+        if html_body:
+            # HTML-only message — no plain-text part, no double email
+            msg = MIMEText(html_body, "html", "utf-8")
+            msg["Subject"] = subject
+            msg["From"]    = self.address
+            msg["To"]      = to
+        else:
+            # Plain-text fallback (no HTML available)
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"]    = self.address
+            msg["To"]      = to
+            msg.attach(MIMEText(body, "plain", "utf-8"))
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(self.address, self.app_password)
+            smtp.sendmail(self.address, to, msg.as_string())
+
+        return True
 
 
 # ---------------- SEND TO ALL CONTACTS ----------------
 
 def send_forecast_to_all():
     forecast = fetch_weather_forecast()
-    numbers = load_contacts()
+    emails   = load_contacts()
 
-    if not numbers:
-        logging.warning("No contacts found.")
+    if not emails:
+        logging.warning("No contacts found in %s.", CONTACTS_CSV)
         return
 
     decision = should_trigger_emergency(forecast)
-    state = load_emergency_state()
-    now = datetime.datetime.utcnow()
+    state    = load_emergency_state()
+    now      = datetime.datetime.utcnow()
+    city     = forecast.get("city", CITY.split(",")[0].title())
 
-    messenger = TwilioMessenger(TWILIO_SID, TWILIO_TOKEN, TWILIO_WHATSAPP_NUMBER, TWILIO_NUMBER)
+    messenger = GmailMessenger(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
 
     if decision["trigger"]:
         last_sent = state.get(decision["reason"])
-        cooldown = datetime.timedelta(hours=EMERGENCY_COOLDOWN_HOURS)
+        cooldown  = datetime.timedelta(hours=EMERGENCY_COOLDOWN_HOURS)
 
+        last_time = None
         if last_sent:
             try:
                 last_time = datetime.datetime.fromisoformat(last_sent)
             except Exception:
                 last_time = None
-        else:
-            last_time = None
 
         if last_time and (now - last_time) < cooldown:
-            logging.info(f"Emergency already sent recently. Sending normal update only.")
-            body = generate_normal_message(forecast)
-            _send_to_numbers(messenger, numbers, body)
+            logging.info("Emergency already sent recently. Sending normal update only.")
+            subject   = f"🌦 Weather Update — {city}"
+            plain     = generate_normal_message(forecast)
+            _, tips   = choose_tips(forecast) if "condition" in forecast else ("🌦", ("Monitor local conditions.", "Stay safe."))
+            html      = build_normal_html(forecast, tips) if "condition" in forecast else None
+            _send_emails(messenger, emails, subject, plain, html)
             return
 
         # Send emergency
-        body = generate_emergency_message(forecast, decision["reason"], decision["metric"])
-        _send_to_numbers(messenger, numbers, body)
+        subject = _subject_for_reason(decision["reason"], city)
+        plain   = generate_emergency_message(forecast, decision["reason"], decision["metric"])
+        html    = build_emergency_html(forecast, decision["reason"], decision["metric"])
+        _send_emails(messenger, emails, subject, plain, html)
 
-        # Save state
         state[decision["reason"]] = now.isoformat()
         save_emergency_state(state)
 
     else:
-        # Normal update
-        body = generate_normal_message(forecast)
-        _send_to_numbers(messenger, numbers, body)
+        subject = f"🌦 Weather Update — {city}"
+        plain   = generate_normal_message(forecast)
+        _, tips = choose_tips(forecast) if "condition" in forecast else ("🌦", ("Monitor local conditions.", "Stay safe."))
+        html    = build_normal_html(forecast, tips) if "condition" in forecast else None
+        _send_emails(messenger, emails, subject, plain, html)
 
 
-def _send_to_numbers(messenger: TwilioMessenger, numbers: list, body: str):
-    logging.info(f"Sending message to {len(numbers)} numbers...")
-    for number in numbers:
+def _send_emails(messenger: GmailMessenger, emails: list, subject: str,
+                 body: str, html_body: str | None = None):
+    logging.info("Sending email to %d recipient(s)...", len(emails))
+    for email in emails:
         try:
-            msg = messenger.send_whatsapp(number, body)
-            logging.info(f"WhatsApp sent to {number}, SID: {msg.sid}")
+            messenger.send_email(email, subject, body, html_body)
+            logging.info("Email sent to %s", email)
+        except smtplib.SMTPAuthenticationError:
+            logging.error(
+                "SMTP authentication failed. Check GMAIL_ADDRESS and GMAIL_APP_PASSWORD in .env"
+            )
+            break
         except Exception as e:
-            logging.warning(f"WhatsApp failed for {number}: {e}. Trying SMS...")
-            try:
-                msg = messenger.send_sms(number, body)
-                logging.info(f"SMS sent to {number}, SID: {msg.sid}")
-            except Exception as e2:
-                logging.error(f"SMS failed for {number}: {e2}")
+            logging.error("Email failed for %s: %s", email, e)
