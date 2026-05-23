@@ -239,11 +239,15 @@ class GmailMessenger:
         self._validate()
 
         if html_body:
-            # HTML-only message — no plain-text part, no double email
-            msg = MIMEText(html_body, "html", "utf-8")
+            # HTML-only message inside a MIMEMultipart container.
+            # This ensures complete MIME-Version: 1.0 headers and correct boundaries,
+            # preventing email clients from displaying it as raw plain text,
+            # while still excluding any plain-text part to avoid duplicates.
+            msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"]    = self.address
             msg["To"]      = to
+            msg.attach(MIMEText(html_body, "html", "utf-8"))
         else:
             # Plain-text fallback (no HTML available)
             msg = MIMEMultipart("alternative")
